@@ -17,6 +17,8 @@ public class NestedDissector {
     // TODO return graph or nodes? Nodes would be cheaper and should be sufficient
     // TODO parallelize method this since we are dealing with disjoint graphs in each recursive step
     // TODO consider finding the largest biconnected component and do computation on them in parallel? See special preprocessing in papers
+
+    // TODO should probably start checking connected components
     public static<T> List<Set<T>> dissect(Graph<T> graph, double epsilon) {
         Deque<Set<T>> dissections = new ArrayDeque<>();
         Queue<Graph<T>> queue = new LinkedList<>(Collections.singletonList(graph));

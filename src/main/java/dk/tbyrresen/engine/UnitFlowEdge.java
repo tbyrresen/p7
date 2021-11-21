@@ -29,6 +29,7 @@ public class UnitFlowEdge<T> implements Edge<T> {
         return target;
     }
 
+    @Override
     public T getOppositeOf(T node) {
         requireConnectedNode(node);
         return source.equals(node) ? target : source;
