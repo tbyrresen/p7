@@ -5,9 +5,7 @@ import org.apache.commons.collections4.SetUtils;
 import org.springframework.lang.Nullable;
 
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -75,7 +73,8 @@ public class GraphUtils {
     }
 
     public static<T> boolean isTree(Graph<T> graph) {
-        return isConnected(graph) && !isCyclic(graph);
+        return isConnected(graph) && graph.getEdges().size() == graph.getNodes().size() - 1;
+        //return isConnected(graph) && !isCyclic(graph);
     }
 
     public static<T> boolean isConnected(Graph<T> graph) {
