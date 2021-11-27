@@ -21,7 +21,7 @@ public class EdgeCut<T> {
     }
 
     private double computeImbalance(int numNodesInGraph, int numNodesInCut) {
-        // Epsilon balance is defined as Max(V1, V2) <= (1 + epsilon) * N / 2
+        // Epsilon balance is defined as Max(V1, V2) <= ceil((1 + epsilon) * N / 2)
         // where N is the number of nodes in the graph, V2 is the number of reachable nodes and V1 is N - V2
         // Finding the epsilon imbalance for an edge cut thus corresponds to (Max(V1, V2) * 2 / N) - 1.
         return (((double) Math.max(numNodesInCut, numNodesInGraph - numNodesInCut) * 2) / numNodesInGraph) - 1;
