@@ -112,6 +112,11 @@ public class UnitFlowNetwork<T> implements Graph<T> {
     }
 
     @Override
+    public void addEdge(Edge<T> edge) {
+        throw new UnsupportedOperationException(); // TODO this is dumb. Should probably make flow network inherent an immutable graph type
+    }
+
+    @Override
     public Set<Edge<T>> getEdges() {
         return outEdges.values().stream().flatMap(Set::stream).collect(Collectors.toSet());
     }

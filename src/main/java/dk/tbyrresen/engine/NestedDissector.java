@@ -19,20 +19,20 @@ public class NestedDissector {
     // TODO consider finding the largest biconnected component and do computation on them in parallel? See special preprocessing in papers
 
     // TODO should probably start checking connected components
-    public static<T> List<Set<T>> dissect(Graph<T> graph, double epsilon) {
-        Deque<Set<T>> dissections = new ArrayDeque<>();
-        Queue<Graph<T>> queue = new LinkedList<>(Collections.singletonList(graph));
-        while (!queue.isEmpty()) {
-            var currentGraph = queue.remove();
-            if (GraphUtils.isClique(currentGraph) || GraphUtils.isTree(currentGraph)) {
-                dissections.addFirst(currentGraph.getNodes());
-            } else {
-                var separator = new GraphSeparator<>(currentGraph, epsilon);
-                var subGraphs = separator.separate();
-                dissections.addFirst(separator.getSeparator());
-                queue.addAll(subGraphs);
-            }
-        }
-        return new ArrayList<>(dissections);
-    }
+//    public static<T> List<Set<T>> dissect(Graph<T> graph, double epsilon) {
+//        Deque<Set<T>> dissections = new ArrayDeque<>();
+//        Queue<Graph<T>> queue = new LinkedList<>(Collections.singletonList(graph));
+//        while (!queue.isEmpty()) {
+//            var currentGraph = queue.remove();
+//            if (GraphUtils.isClique(currentGraph) || GraphUtils.isTree(currentGraph)) {
+//                dissections.addFirst(currentGraph.getNodes());
+//            } else {
+//                var separator = new GraphSeparator<>(currentGraph, epsilon);
+//                var subGraphs = separator.separate();
+//                dissections.addFirst(separator.getSeparator().getSeparatorNodes());
+//                queue.addAll(subGraphs);
+//            }
+//        }
+//        return new ArrayList<>(dissections);
+//    }
 }

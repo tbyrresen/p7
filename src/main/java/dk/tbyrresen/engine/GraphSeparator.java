@@ -1,6 +1,7 @@
 package dk.tbyrresen.engine;
 
 import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.MutablePair;
 
 import java.security.SecureRandom;
 import java.util.ArrayList;
@@ -10,16 +11,15 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class GraphSeparator<T> {
-    private static final double OPTIMAL_CUT_MAX_IMBALANCE = 0.6;
     private static final int NUM_RANDOM_FLOWCUTTER_RUNS = 20;
     private final Graph<T> graph;
-    private final Set<T> separator;
+    private final Separator<T> separator;
 
     public GraphSeparator(Graph<T> graph, double epsilon) {
         this.graph = graph;
         var edgeCuts = computeCutSets(epsilon);
         var optimalCut = findOptimalCut(edgeCuts);
-        separator = findSeparatorNodes(optimalCut);
+        separator = findSeparator(optimalCut);
     }
 
     private Set<EdgeCut<T>> computeCutSets(double epsilon) {
@@ -48,31 +48,35 @@ public class GraphSeparator<T> {
     private EdgeCut<T> findOptimalCut(Set<EdgeCut<T>> cuts) {
         return cuts
                 .stream()
-                .filter(c -> c.getImbalance() <= OPTIMAL_CUT_MAX_IMBALANCE)
+                .filter(c -> c.getImbalance() <= DissectionConstants.OPTIMAL_CUT_MAX_IMBALANCE)
                 .min(Comparator.comparing(EdgeCut::getExpansionSize))
                 .orElseThrow(() -> new IllegalStateException(
                         String.format("No suitable cut to choose as optimal cut using max cut imbalance heuristic of: %s",
-                                      OPTIMAL_CUT_MAX_IMBALANCE)));
+                                      DissectionConstants.OPTIMAL_CUT_MAX_IMBALANCE)));
     }
 
-    // Note that we do not need to compute this as an actual subgraph containing edges since we
-    // only need the separator nodes for performing a subsequent split of the graph. This keeps it more efficient.
-    private Set<T> findSeparatorNodes(EdgeCut<T> edgeCut) {
-        var numNodesInCut = edgeCut.getNodesInCut().size();
-        var numNodesNotInCut = graph.getNodes().size() - numNodesInCut;
+    private Separator<T> findSeparator(EdgeCut<T> edgeCut) {
+        var nodesInCut = edgeCut.getNodesInCut();
+        var nodesNotInCut = graph.getNodes()
+                .stream()
+                .filter(n -> !nodesInCut.contains(n))
+                .collect(Collectors.toSet());
         var separatorNodes = new HashSet<T>();
         for (var edge : edgeCut.getCutEdges()) {
             if (!(separatorNodes.contains(edge.getSource()) || separatorNodes.contains(edge.getTarget()))) {
-                if (numNodesInCut <= numNodesNotInCut) {
-                    separatorNodes.add(getSeparatorNode(edge, edgeCut, false));
-                    numNodesInCut--;
+                if (nodesInCut.size() <= nodesNotInCut.size()) {
+                    var separatorNode = getSeparatorNode(edge, edgeCut, false);
+                    separatorNodes.add(separatorNode);
+                    nodesNotInCut.remove(separatorNode);
                 } else {
-                    separatorNodes.add(getSeparatorNode(edge, edgeCut, true));
-                    numNodesNotInCut--;
+                    var separatorNode = getSeparatorNode(edge, edgeCut, true);
+                    separatorNodes.add(separatorNode);
+                    nodesInCut.remove(separatorNode);
                 }
             }
         }
-        return separatorNodes;
+        var separatingEdges = findSeparatingEdges(separatorNodes);
+        return new Separator<>(separatorNodes, nodesInCut, nodesNotInCut, separatingEdges);
     }
 
     private T getSeparatorNode(Edge<T> edge, EdgeCut<T> edgeCut, boolean extractFromCut) {
@@ -89,21 +93,27 @@ public class GraphSeparator<T> {
         }
     }
 
-    public Set<Graph<T>> separate() {
-        var separatedNodes = graph.getNodes()
+    // returns all the edges that goes from the separator to the separated subgraphs
+    private Set<Edge<T>> findSeparatingEdges(Set<T> separatorNodes) {
+        return graph.getEdges()
                 .stream()
-                .filter(n -> !separator.contains(n))
+                .filter(e -> (separatorNodes.contains(e.getSource()) && !separatorNodes.contains(e.getTarget()))
+                          || (!separatorNodes.contains(e.getSource()) && separatorNodes.contains(e.getTarget())))
                 .collect(Collectors.toSet());
-
-        var separatedNodesEdges = graph.getEdges()
-                .stream()
-                .filter(e -> separatedNodes.contains(e.getSource()) && separatedNodes.contains(e.getTarget()))
-                .collect(Collectors.toSet());
-
-        return GraphUtils.findConnectedComponents(new StandardGraph<>(separatedNodes, separatedNodesEdges));
     }
 
-    public Set<T> getSeparator() {
+    // TODO figure out if we can do this immutable
+    public MutablePair<Set<Graph<T>>, Set<Graph<T>>> separate() {
+        Set<Edge<T>> leftSeparatedEdges = GraphUtils.extractSubGraphEdges(graph, separator.getLeftSeparatedNodes());
+        Set<Edge<T>> rightSeparatedEdges = GraphUtils.extractSubGraphEdges(graph, separator.getRightSeparatedNodes());
+        var leftConnectedComponents = GraphUtils.findConnectedComponents(
+                new StandardGraph<>(separator.getLeftSeparatedNodes(), leftSeparatedEdges));
+        var rightConnectedComponents = GraphUtils.findConnectedComponents(
+                new StandardGraph<>(separator.getRightSeparatedNodes(), rightSeparatedEdges));
+        return MutablePair.of(leftConnectedComponents, rightConnectedComponents);
+    }
+
+    public Separator<T> getSeparator() {
         return separator;
     }
 }
