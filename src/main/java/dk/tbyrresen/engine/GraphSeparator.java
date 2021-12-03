@@ -46,13 +46,16 @@ public class GraphSeparator<T> {
     }
 
     private EdgeCut<T> findOptimalCut(Set<EdgeCut<T>> cuts) {
-        return cuts
+        var optimalUsingMaxImbalance = cuts
                 .stream()
                 .filter(c -> c.getImbalance() <= DissectionConstants.OPTIMAL_CUT_MAX_IMBALANCE)
+                .min(Comparator.comparing(EdgeCut::getExpansionSize));
+
+        // TODO should we order these by imbalance? at least check if this ever happens on real world graphs
+        return optimalUsingMaxImbalance.orElseGet(() -> cuts
+                .stream()
                 .min(Comparator.comparing(EdgeCut::getExpansionSize))
-                .orElseThrow(() -> new IllegalStateException(
-                        String.format("No suitable cut to choose as optimal cut using max cut imbalance heuristic of: %s",
-                                      DissectionConstants.OPTIMAL_CUT_MAX_IMBALANCE)));
+                .orElseThrow(() -> new IllegalStateException("No cut to choose as optimal one")));
     }
 
     private Separator<T> findSeparator(EdgeCut<T> edgeCut) {

@@ -12,7 +12,7 @@ public class NestedDissectionTreeNode<T> {
     private final Set<Edge<T>> dissectionEdges;
     @Nullable private NestedDissectionTreeNode<T> parent;
     @Nullable private SeparationSide separationSide;
-    private final Set<NestedDissectionTreeNode<T>> children = new HashSet<>();
+    private Set<NestedDissectionTreeNode<T>> children = new HashSet<>();
     private Set<Edge<T>> edgesToChildren = new HashSet<>();
     private int leftTreeSize = 0;
     private int rightTreeSize = 0;
@@ -62,9 +62,27 @@ public class NestedDissectionTreeNode<T> {
         this.separationSide = separationSide;
     }
 
+    // copy constructor
+    public NestedDissectionTreeNode(NestedDissectionTreeNode<T> node) {
+        dissectionNodes = new HashSet<>(node.dissectionNodes);
+        dissectionEdges = new HashSet<>(node.dissectionEdges);
+        parent = node.parent;
+        separationSide = node.separationSide;
+        children = new HashSet<>(node.children);
+        edgesToChildren = new HashSet<>(node.edgesToChildren);
+        leftTreeSize = node.leftTreeSize;
+        rightTreeSize = node.rightTreeSize;
+        numDirtyNodes = node.numDirtyNodes;
+        depth = node.depth;
+    }
+
     @Nullable
     public NestedDissectionTreeNode<T> getParent() {
         return parent;
+    }
+
+    public void setParent(@Nullable NestedDissectionTreeNode<T> parent) {
+        this.parent = parent;
     }
 
     public void addChild(NestedDissectionTreeNode<T> node) {

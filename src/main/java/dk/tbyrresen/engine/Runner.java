@@ -1,6 +1,7 @@
 package dk.tbyrresen.engine;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -116,103 +117,38 @@ public class Runner {
         Set<Edge<Node>> edges = new HashSet<>(Arrays.asList(edge12, edge13, edge24, edge25, edge35, edge36, edge47, edge57, edge58, edge68, edge79, edge89,
                                                             edge910, edge911, edge1012, edge1013, edge1113, edge1114, edge1215, edge1315, edge1316, edge1416, edge1517, edge1617));
 
-//        var roadNetwork = new StandardGraph<>(nodes, edges);
-//        var dissections = NestedDissector.dissect(roadNetwork, 0.2);
-//        System.out.println("DISSECTIONS:");
-//        dissections.forEach(System.out::println);
-
-
 
         var roadNetwork = new StandardGraph<>(nodes, edges);
         var ndTree = new NestedDissectionTree<>(roadNetwork, 0.6);
-
-        for (var dissection : ndTree.getOrderedDissections()) {
-            System.out.println(dissection);
-        }
 
         System.out.println(ndTree.getNumDirtyNodes());
         var newNode1 = new Node(18);
         var newNode2 = new Node(19);
         var newNode3 = new Node(20);
-        ndTree.addEdge(new StandardEdge<>(node6, newNode1));
+        ndTree.addEdge(new StandardEdge<>(node8, newNode1));
         for (var dissection : ndTree.getOrderedDissections()) {
             System.out.println(dissection.getDissectionNodes());
         }
         System.out.println(ndTree.getNumDirtyNodes());
-        ndTree.addEdge(new StandardEdge<>(node14, newNode2));
+        ndTree.addEdge(new StandardEdge<>(newNode1, newNode2));
         for (var dissection : ndTree.getOrderedDissections()) {
             System.out.println(dissection.getDissectionNodes());
         }
         System.out.println(ndTree.getNumDirtyNodes());
-        ndTree.addEdge(new StandardEdge<>(node2, node3));
+        ndTree.addEdge(new StandardEdge<>(newNode2, newNode3));
+        for (var dissection : ndTree.getOrderedDissections()) {
+            System.out.println(dissection.getDissectionNodes());
+        }
+        System.out.println(ndTree.getNumDirtyNodes());
+        ndTree.addEdge(new StandardEdge<>(newNode3, node6));
         for (var dissection : ndTree.getOrderedDissections()) {
             System.out.println(dissection.getDissectionNodes());
         }
         System.out.println(ndTree.getNumDirtyNodes());
 
-
-
-//        System.out.println(ndTree.getNumDirtyNodes());
-//        ndTree.addEdge(new StandardEdge<>(newNode1, newNode2));
-//        for (var dissection : ndTree.getOrderedDissections()) {
-//            System.out.println(dissection);
-//        }
-//        System.out.println(ndTree.getNumDirtyNodes());
-//        ndTree.addEdge(new StandardEdge<>(newNode2, newNode3));
-//        for (var dissection : ndTree.getOrderedDissections()) {
-//            System.out.println(dissection);
-//        }
-//        System.out.println(ndTree.getNumDirtyNodes());
-//        ndTree.addEdge(new StandardEdge<>(newNode3, node6));
-//        for (var dissection : ndTree.getOrderedDissections()) {
-//            System.out.println(dissection);
-//        }
-//        System.out.println(ndTree.getNumDirtyNodes());
-//        ndTree.addEdge(new StandardEdge<>(node4, node9));
-//        for (var dissection : ndTree.getOrderedDissections()) {
-//            System.out.println(dissection);
-//        }
-//        System.out.println(ndTree.getNumDirtyNodes());
-
-//        var node1 = new Node(1);
-//        var node2 = new Node(2);
-//        var node3 = new Node(3);
-//        var node4 = new Node(4);
-//        var node5 = new Node(5);
-//        var nodes = new HashSet<>(Arrays.asList(node1, node2, node3, node4, node5));
-//
-//        var edge1 = new StandardEdge<>(node1, node2);
-//        var edge2 = new StandardEdge<>(node1, node3);
-//        var edge3 = new StandardEdge<>(node2, node3);
-//        var edge4 = new StandardEdge<>(node3, node4);
-//        var edge5 = new StandardEdge<>(node3, node5);
-//        var edge6 = new StandardEdge<>(node4, node5);
-//        Set<Edge<Node>> edges = new HashSet<>(Arrays.asList(edge1, edge2, edge3, edge4, edge5, edge6));
-//
-//        var roadNetwork = new StandardGraph<>(nodes, edges);
-//        var ndTree = new NestedDissectionTreeNew<>(roadNetwork, 0.6);
-
-//        System.out.println(ndTree.getNumDirtyNodes());
-//        ndTree.addEdge(new StandardEdge<>(node1, new Node(6)));
-//        System.out.println(ndTree.getNumDirtyNodes());
-//        ndTree.addEdge(new StandardEdge<>(node1, new Node(7)));
-//        System.out.println(ndTree.getNumDirtyNodes());
-//        ndTree.addEdge(new StandardEdge<>(node1, new Node(8)));
-//        System.out.println(ndTree.getNumDirtyNodes());
-//        ndTree.addEdge(new StandardEdge<>(node1, new Node(9)));
-//        System.out.println(ndTree.getNumDirtyNodes());
-//        ndTree.addEdge(new StandardEdge<>(node1, new Node(10)));
-//        System.out.println(ndTree.getNumDirtyNodes());
-//        ndTree.addEdge(new StandardEdge<>(node1, new Node(11)));
-//        System.out.println(ndTree.getNumDirtyNodes());
-//        ndTree.addEdge(new StandardEdge<>(node1, new Node(12)));
-//        System.out.println(ndTree.getNumDirtyNodes());
-//        ndTree.addEdge(new StandardEdge<>(node1, new Node(13)));
-//        System.out.println(ndTree.getNumDirtyNodes());
-//        ndTree.addEdge(new StandardEdge<>(node1, new Node(14)));
-//        System.out.println(ndTree.getNumDirtyNodes());
-//        ndTree.addEdge(new StandardEdge<>(node1, new Node(15)));
-//        System.out.println(ndTree.getNumDirtyNodes());
-//        System.out.println("done");
+        var root = ndTree.getRoot();
+        var graph = ndTree.buildGraphFromDissectionNode(root);
+        System.out.println(graph.getNodes().size());
+        System.out.println(graph.getEdges().size());
     }
 }

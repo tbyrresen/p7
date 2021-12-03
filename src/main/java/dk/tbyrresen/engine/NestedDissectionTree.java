@@ -10,7 +10,7 @@ import java.util.Set;
 
 public class NestedDissectionTree<T> {
     private NestedDissectionTreeNode<T> root;
-    private List<NestedDissectionTreeNode<T>> orderedDissections;
+    private List<NestedDissectionTreeNode<T>> orderedDissections; // TODO consider using a TreeSet for fast removal
     private final double epsilon;
 
     public NestedDissectionTree(Graph<T> graph, double epsilon) {
@@ -109,25 +109,32 @@ public class NestedDissectionTree<T> {
             throw new IllegalArgumentException(String.format(
                     "At least one endpoint of edge %s must be a node in the graph", edge));
         } else if (sourceDissectionNode.isPresent() && targetDissectionNode.isEmpty()) {
-            var source = sourceDissectionNode.get();
-            source.addDissectionNode(edge.getTarget());
+            var source = getUpdateDissectionNode(sourceDissectionNode.get(), edge.getTarget(), edge);
             incrementTreeSize(source.getParent(), source.getSeparationSide());
-            source.addDissectionEdge(edge);
             var highestImbalancedNode = findHighestImbalancedAncestor(source);
-            highestImbalancedNode.ifPresent(this::recomputeTreeFromDissectionNode);
+            if (highestImbalancedNode.isPresent()) {
+                recomputeTreeFromDissectionNode(highestImbalancedNode.get());
+            } else if (isLeafNode(source) && violatesLeafConditions(source)) {
+                recomputeTreeFromDissectionNode(source);
+            }
         } else if (sourceDissectionNode.isEmpty()) {
-            var target = targetDissectionNode.get();
-            target.addDissectionNode(edge.getSource());
+            var target = getUpdateDissectionNode(targetDissectionNode.get(), edge.getSource(), edge);
             incrementTreeSize(target.getParent(), target.getSeparationSide());
-            target.addDissectionEdge(edge);
             var highestImbalancedNode = findHighestImbalancedAncestor(target);
-            highestImbalancedNode.ifPresent(this::recomputeTreeFromDissectionNode);
+            if (highestImbalancedNode.isPresent()) {
+                recomputeTreeFromDissectionNode(highestImbalancedNode.get());
+            } else if (isLeafNode(target) && violatesLeafConditions(target)) {
+                recomputeTreeFromDissectionNode(target);
+            }
         } else { // need to find the lowest common ancestor when both are present
             var source = sourceDissectionNode.get();
             var target = targetDissectionNode.get();
             var lowestCommonAncestor= findLowestCommonAncestor(source, target);
             if (lowestCommonAncestor.equals(source)) {  // source == target
                 source.addDissectionEdge(edge);
+                if (isLeafNode(source) && violatesLeafConditions(source)) {
+                    recomputeTreeFromDissectionNode(source);
+                }
             } else { // determine if the edge crosses a separator or if we simply need to add an edge to child
                 if (crossesSeparator(sourceDissectionNode.get(), targetDissectionNode.get())) {
                     recomputeTreeFromDissectionNode(lowestCommonAncestor, edge);
@@ -149,6 +156,38 @@ public class NestedDissectionTree<T> {
             }
         }
         return Optional.empty();
+    }
+
+    // This method is necessary when we add a new dissectionNode since we use the dissectionNodes to compute hash values.
+    private NestedDissectionTreeNode<T> getUpdateDissectionNode(NestedDissectionTreeNode<T> nodeToUpdate, T dissectionNode, Edge<T> edge) {
+        var updatedNode = new NestedDissectionTreeNode<>(nodeToUpdate); // copy the nodeToUpdate
+        updatedNode.addDissectionNode(dissectionNode);
+        updatedNode.addDissectionEdge(edge);
+        var parent = nodeToUpdate.getParent();
+        if (parent != null) {
+            parent.removeChild(nodeToUpdate);
+            parent.addChild(updatedNode);
+        }
+        // Updated children to point to the new node
+        for (var child : updatedNode.getChildren()) {
+            child.setParent(updatedNode);
+        }
+        // Update root if necessary.
+        if (nodeToUpdate.equals(root)) {
+            root = updatedNode;
+        }
+        // This is quick and dirty but more efficient that traversing entire tree
+        // and it ensure that the order remains correct
+        var counter = 0;
+        while (counter < orderedDissections.size()) {
+            if (orderedDissections.get(counter).equals(nodeToUpdate)) {
+                orderedDissections.remove(counter);
+                orderedDissections.add(counter, updatedNode);
+                break;
+            }
+            counter++;
+        }
+        return updatedNode;
     }
 
     // Increments the tree size of the given size by one and propagates this change to all ancestor nodes
@@ -189,6 +228,16 @@ public class NestedDissectionTree<T> {
         }
         throw new IllegalStateException(String.format(
                 "Can't find common ancestor of dissection nodes %s and %s", source, target));
+    }
+
+    private boolean isLeafNode(NestedDissectionTreeNode<T> node) {
+        return node.getChildren().isEmpty();
+    }
+
+    // Assumes node is a leaf node
+    private boolean violatesLeafConditions(NestedDissectionTreeNode<T> node) {
+        var leafGraph = new StandardGraph<>(node.getDissectionNodes(), node.getDissectionEdges());
+        return (!(GraphUtils.isTree(leafGraph) || GraphUtils.isClique(leafGraph)));
     }
 
     // Returns true if a separator needs to be crossed to traverse from source to target or vice versa
@@ -239,7 +288,7 @@ public class NestedDissectionTree<T> {
         orderedDissections = getOrderedDissectionNodes();
     }
 
-    private Graph<T> buildGraphFromDissectionNode(NestedDissectionTreeNode<T> node) {
+    public Graph<T> buildGraphFromDissectionNode(NestedDissectionTreeNode<T> node) {
         var collectedNodes = new HashSet<>(node.getDissectionNodes());
         var collectedEdges = new HashSet<>(node.getDissectionEdges());
         collectedEdges.addAll(node.getEdgesToChildren());
@@ -250,7 +299,6 @@ public class NestedDissectionTree<T> {
         return new StandardGraph<>(collectedNodes, collectedEdges);
     }
 
-    // TODO FOR TESTING
     public NestedDissectionTreeNode<T> getRoot() {
         return root;
     }
