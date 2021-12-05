@@ -6,6 +6,8 @@ import org.springframework.lang.Nullable;
 
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.Queue;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -18,29 +20,32 @@ public class GraphUtils {
     public static<T> Set<Graph<T>> findConnectedComponents(Graph<T> graph) {
         Set<Graph<T>> connectedComponents = new HashSet<>();
         Set<T> visited = new HashSet<>();
-        Set<T> currentConnectedNodes = new HashSet<>();
         for (var node : graph.getNodes()) {
             if (!visited.contains(node)) {
-                fillConnectedComponent(node, visited, currentConnectedNodes, graph);
-                connectedComponents.add(extractSubGraph(graph, currentConnectedNodes));
-                currentConnectedNodes = new HashSet<>();
+                var connectedComponent = fillConnectedComponent(node, graph);
+                connectedComponents.add(extractSubGraph(graph, connectedComponent));
+                visited.addAll(connectedComponent);
+                return connectedComponents; // TODO TESTING
             }
         }
         return connectedComponents;
     }
 
-    // Uses DFS to fill the current connected component
-    private static<T> void fillConnectedComponent(T node,
-                                                  Set<T> visited,
-                                                  Set<T> connectedNodes,
-                                                  Graph<T> graph) {
-        visited.add(node);
-        connectedNodes.add(node);
-        for (var neighbor : graph.getAdjacentNodes(node)) {
-            if (!visited.contains(neighbor)) {
-                fillConnectedComponent(neighbor, visited, connectedNodes, graph);
+    // Fills the current connected component
+    private static<T> Set<T> fillConnectedComponent(T node, Graph<T> graph) {
+        Set<T> visited = new HashSet<>(Collections.singleton(node));
+        Queue<T> queue = new LinkedList<>(visited);
+        while (!queue.isEmpty()) {
+            var currentNode = queue.remove();
+            var neighbors = graph.getAdjacentNodes(currentNode);
+            for (var neighbor : neighbors) {
+                if (!visited.contains(neighbor)) {
+                    visited.add(neighbor);
+                    queue.add(neighbor);
+                }
             }
         }
+        return visited;
     }
 
     public static<T> boolean isClique(Graph<T> graph) {
@@ -65,7 +70,7 @@ public class GraphUtils {
     private static<T> boolean checkIfClique(Graph<T> graph) {
         for (var node : graph.getNodes()) {
             if (!CollectionUtils.isEqualCollection(SetUtils.difference(graph.getNodes(), Collections.singleton(node)),
-                                                                       graph.getAdjacentNodes(node))) {
+                                                   graph.getAdjacentNodes(node))) {
                 return false;
             }
         }
@@ -74,7 +79,6 @@ public class GraphUtils {
 
     public static<T> boolean isTree(Graph<T> graph) {
         return isConnected(graph) && graph.getEdges().size() == graph.getNodes().size() - 1;
-        //return isConnected(graph) && !isCyclic(graph);
     }
 
     public static<T> boolean isConnected(Graph<T> graph) {
@@ -82,19 +86,8 @@ public class GraphUtils {
         if (source.isEmpty()) {
             return true;
         }
-        Set<T> visited = new HashSet<>();
-        findReachableNodes(source.get(), visited, graph);
-        return visited.size() == graph.getNodes().size();
-    }
-
-    // Uses DFS to find all nodes reachable from the provided source node
-    private static<T> void findReachableNodes(T source, Set<T> visited, Graph<T> graph) {
-        visited.add(source);
-        for (var neighbor : graph.getAdjacentNodes(source)) {
-            if (!visited.contains(neighbor)) {
-                findReachableNodes(neighbor, visited, graph);
-            }
-        }
+        var component = fillConnectedComponent(source.get(), graph);
+        return component.size() == graph.getNodes().size();
     }
 
     public static<T> boolean isCyclic(Graph<T> graph) {
