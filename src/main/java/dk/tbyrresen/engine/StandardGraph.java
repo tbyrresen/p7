@@ -8,11 +8,11 @@ import java.util.Objects;
 import java.util.Set;
 
 public class StandardGraph<T> implements Graph<T> {
-    private final Set<T> nodes;
-    private final Set<Edge<T>> edges;
-    private final Map<T, Set<T>> adjacentNodes;
-    private final boolean allowsSelfLoops;
-    private final boolean allowsParallelEdges;
+    protected Set<T> nodes;
+    protected Set<Edge<T>> edges;
+    protected Map<T, Set<T>> adjacentNodes;
+    protected boolean allowsSelfLoops;
+    protected boolean allowsParallelEdges;
 
     public StandardGraph(Set<T> nodes, Set<Edge<T>> edges) {
         this.nodes = nodes;
@@ -31,15 +31,20 @@ public class StandardGraph<T> implements Graph<T> {
         allowsParallelEdges = false;
     }
 
-    private Map<T, Set<T>> findAdjacentNodes(Set<T> nodes, Set<Edge<T>> edges) {
+    // quick and dirty solution to have OSM graph extend this. This is super bad practice
+    // but works fine for our needs.
+    public StandardGraph() {
+    }
+
+    protected Map<T, Set<T>> findAdjacentNodes(Set<T> nodes, Set<Edge<T>> edges) {
         Map<T, Set<T>> adjacentNodesMap = new HashMap<>();
         nodes.forEach(n -> adjacentNodesMap.put(n, new HashSet<>()));
-        edges.forEach(e -> {
-            requireContainsNode(e.getSource());
-            requireContainsNode(e.getTarget());
-            adjacentNodesMap.get(e.getSource()).add(e.getTarget());
-            adjacentNodesMap.get(e.getTarget()).add(e.getSource());
-        });
+        for (var edge : edges) {
+            requireContainsNode(edge.getSource());
+            requireContainsNode(edge.getTarget());
+            adjacentNodesMap.get(edge.getSource()).add(edge.getTarget());
+            adjacentNodesMap.get(edge.getTarget()).add(edge.getSource());
+        }
         return adjacentNodesMap;
     }
 
