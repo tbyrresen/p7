@@ -12,7 +12,7 @@ public class UnitFlowNetwork<T> implements Graph<T> {
     private final T originalTarget;
     private Set<T> sourceNodes = new HashSet<>();
     private Set<T> targetNodes = new HashSet<>();
-    private final Map<T, Set<UnitFlowEdge<T>>> outEdges = new HashMap<>();  // Used semi undirected since we need to look from both directed in edmonds karp?
+    private final Map<T, Set<MultiFlowEdge<T>>> outEdges = new HashMap<>();  // Used semi undirected since we need to look from both directed in edmonds karp?
 
     // TODO Should we allow/disallow selfloops and/or paralleledges?
     public UnitFlowNetwork(Graph<T> graph, T source, T target) {
@@ -33,9 +33,9 @@ public class UnitFlowNetwork<T> implements Graph<T> {
 
     private void addEdgesAsUnitFlowEdges(Set<Edge<T>> edges) {
         for (var edge : edges) {
-            var unitFlowEdge = new UnitFlowEdge<>(edge.getSource(), edge.getTarget());
-            outEdges.get(edge.getSource()).add(unitFlowEdge);
-            outEdges.get(edge.getTarget()).add(unitFlowEdge);
+            var multiFlowEdge = new MultiFlowEdge<>(edge.getSource(), edge.getTarget());
+            outEdges.get(edge.getSource()).add(multiFlowEdge);
+            outEdges.get(edge.getTarget()).add(multiFlowEdge);
         }
     }
 
@@ -47,7 +47,9 @@ public class UnitFlowNetwork<T> implements Graph<T> {
         return originalTarget;
     }
 
-    public Set<UnitFlowEdge<T>> getOutEdges(T node) {
+    // This seems a bit odd, but we only need to return the first (or second) edge due
+    // to how the later steps are implemented.
+    public Set<MultiFlowEdge<T>> getOutEdges(T node) {
         requireContainsNode(node);
         return outEdges.get(node);
     }
@@ -90,11 +92,6 @@ public class UnitFlowNetwork<T> implements Graph<T> {
         targetNodes.add(node);
     }
 
-    // reset flow for all edges in network
-    public void resetFlow() {
-        outEdges.values().stream().flatMap(Set::stream).forEach(UnitFlowEdge::resetFlow);
-    }
-
     @Override
     public Set<T> getNodes() {
         return outEdges.keySet();
@@ -106,6 +103,7 @@ public class UnitFlowNetwork<T> implements Graph<T> {
         requireContainsNode(node);
         return outEdges.get(node)
                 .stream()
+                .map(MultiFlowEdge::getFirst)
                 .flatMap(e -> Stream.of(e.getSource(), e.getTarget()))
                 .filter(n -> !node.equals(n))
                 .collect(Collectors.toSet());
@@ -118,7 +116,11 @@ public class UnitFlowNetwork<T> implements Graph<T> {
 
     @Override
     public Set<Edge<T>> getEdges() {
-        return outEdges.values().stream().flatMap(Set::stream).collect(Collectors.toSet());
+        return outEdges.values()
+                .stream()
+                .flatMap(Set::stream)
+                .flatMap(e -> Stream.of(e.getFirst(), e.getSecond()))
+                .collect(Collectors.toSet());
     }
 
     @Override

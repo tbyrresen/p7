@@ -56,7 +56,6 @@ public class FlowCutter<T> {
     private void computeCutSets() {
         var foundEpsilonBalancedBipartition = false;
         while (!foundEpsilonBalancedBipartition && !isIntersectingSourceAndTarget()) {
-            unitFlowNetwork.resetFlow(); // Reset flow to avoid getting stuck when searching for paths on new source and target sets
             var edmondsKarp = new EdmondsKarp<>(unitFlowNetwork);
             if (edmondsKarp.getSourceReachableNodes().size() <= edmondsKarp.getTargetReachableNodes().size()) {
                 unitFlowNetwork.setSourceNodes(edmondsKarp.getSourceReachableNodes());
@@ -92,6 +91,7 @@ public class FlowCutter<T> {
                 .stream()
                 .map(unitFlowNetwork::getOutEdges)
                 .flatMap(Set::stream)
+                .map(MultiFlowEdge::getFirst)
                 .filter(e -> isCutEdge(reachableNodes, e))
                 .collect(Collectors.toSet());
 

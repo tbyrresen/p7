@@ -11,7 +11,7 @@ import java.util.Set;
 
 public class EdmondsKarp<T> {
     private final UnitFlowNetwork<T> unitFlowNetwork;
-    private final Map<T, UnitFlowEdge<T>> edgeTo = new HashMap<>();
+    private final Map<T, MultiFlowEdge<T>> edgeTo = new HashMap<>();
     private final Set<T> sourceReachableNodes = new HashSet<>();
     private final Set<T> targetReachableNodes = new HashSet<>();
     // Use a single target node for augmenting the flow to avoid having to create
@@ -40,11 +40,11 @@ public class EdmondsKarp<T> {
         Queue<T> queue = new LinkedList<>(sourceReachableNodes);
         while (!queue.isEmpty()) {
             var currentNode = queue.remove();
-            for (var unitFlowEdge : unitFlowNetwork.getOutEdges(currentNode)) {
-                var oppositeNode = unitFlowEdge.getOppositeOf(currentNode);
-                if (unitFlowEdge.canFlowTo(oppositeNode) && !sourceReachableNodes.contains(oppositeNode)) {
+            for (var multiFlowEdge : unitFlowNetwork.getOutEdges(currentNode)) {
+                var oppositeNode = multiFlowEdge.getOppositeOf(currentNode);
+                if (multiFlowEdge.canFlowTo(oppositeNode) && !sourceReachableNodes.contains(oppositeNode)) {
                     sourceReachableNodes.add(oppositeNode);
-                    edgeTo.put(oppositeNode, unitFlowEdge);
+                    edgeTo.put(oppositeNode, multiFlowEdge);
                     if (unitFlowNetwork.isTargetNode(oppositeNode)) {
                         augmentingPathTarget = oppositeNode;
                         return true;
@@ -62,9 +62,9 @@ public class EdmondsKarp<T> {
         Queue<T> queue = new LinkedList<>(targetReachableNodes);
         while (!queue.isEmpty()) {
             var currentNode = queue.remove();
-            for (var unitFlowEdge : unitFlowNetwork.getOutEdges(currentNode)) {
-                var oppositeNode = unitFlowEdge.getOppositeOf(currentNode);
-                if (unitFlowEdge.canFlowTo(oppositeNode) && !targetReachableNodes.contains(oppositeNode)) {
+            for (var multiFlowEdge : unitFlowNetwork.getOutEdges(currentNode)) {
+                var oppositeNode = multiFlowEdge.getOppositeOf(currentNode);
+                if (multiFlowEdge.canFlowTo(currentNode) && !targetReachableNodes.contains(oppositeNode)) {
                     targetReachableNodes.add(oppositeNode);
                     queue.add(oppositeNode);
                 }
@@ -78,5 +78,9 @@ public class EdmondsKarp<T> {
 
     public Set<T> getTargetReachableNodes() {
         return targetReachableNodes;
+    }
+
+    public int getMaxFlow() {
+        return maxFlow;
     }
 }

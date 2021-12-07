@@ -1,7 +1,11 @@
 package dk.tbyrresen.engine;
 
+import dk.tbyrresen.engine.osm.OSMGraph;
+
+import java.io.File;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -88,7 +92,9 @@ public class Runner {
         var node15 = new Node(15);
         var node16 = new Node(16);
         var node17 = new Node(17);
-        Set<Node> nodes = new HashSet<>(Arrays.asList(node1, node2, node3, node4, node5, node6, node7, node8, node9, node10, node11, node12, node13, node14, node15, node16, node17));
+        var node18 = new Node(18);
+        var node19 = new Node(19);
+        Set<Node> nodes = new HashSet<>(Arrays.asList(node1, node2, node3, node4, node5, node6, node7, node8, node9, node10, node11, node12, node13, node14, node15, node16, node17, node18, node19));
 
         var edge12 = new StandardEdge<>(node1, node2);
         var edge13 = new StandardEdge<>(node1, node3);
@@ -114,41 +120,62 @@ public class Runner {
         var edge1416 = new StandardEdge<>(node14, node16);
         var edge1517 = new StandardEdge<>(node15, node17);
         var edge1617 = new StandardEdge<>(node16, node17);
+        var edge418 = new StandardEdge<>(node4, node18);
+        var edge1812 = new StandardEdge<>(node18, node12);
+        var edge619 = new StandardEdge<>(node6, node19);
+        var edge1914 = new StandardEdge<>(node19, node14);
         Set<Edge<Node>> edges = new HashSet<>(Arrays.asList(edge12, edge13, edge24, edge25, edge35, edge36, edge47, edge57, edge58, edge68, edge79, edge89,
-                                                            edge910, edge911, edge1012, edge1013, edge1113, edge1114, edge1215, edge1315, edge1316, edge1416, edge1517, edge1617));
+                                                            edge910, edge911, edge1012, edge1013, edge1113, edge1114, edge1215, edge1315, edge1316, edge1416, edge1517, edge1617,
+                                                            edge418, edge1812, edge619, edge1914));
 
 
-        var roadNetwork = new StandardGraph<>(nodes, edges);
-        var ndTree = new NestedDissectionTree<>(roadNetwork, 0.6);
-
-        System.out.println(ndTree.getNumDirtyNodes());
-        var newNode1 = new Node(18);
-        var newNode2 = new Node(19);
-        var newNode3 = new Node(20);
-        ndTree.addEdge(new StandardEdge<>(node8, newNode1));
-        for (var dissection : ndTree.getOrderedDissections()) {
-            System.out.println(dissection.getDissectionNodes());
-        }
-        System.out.println(ndTree.getNumDirtyNodes());
-        ndTree.addEdge(new StandardEdge<>(newNode1, newNode2));
-        for (var dissection : ndTree.getOrderedDissections()) {
-            System.out.println(dissection.getDissectionNodes());
-        }
-        System.out.println(ndTree.getNumDirtyNodes());
-        ndTree.addEdge(new StandardEdge<>(newNode2, newNode3));
-        for (var dissection : ndTree.getOrderedDissections()) {
-            System.out.println(dissection.getDissectionNodes());
-        }
-        System.out.println(ndTree.getNumDirtyNodes());
-        ndTree.addEdge(new StandardEdge<>(newNode3, node6));
-        for (var dissection : ndTree.getOrderedDissections()) {
-            System.out.println(dissection.getDissectionNodes());
-        }
-        System.out.println(ndTree.getNumDirtyNodes());
-
+        var osmGraph = new OSMGraph("monaco-latest.osm");
+        var roadNetwork = new StandardGraph<>(osmGraph);
+        var cc = GraphUtils.findConnectedComponents(roadNetwork);
+        var largestCC = cc.stream().max(Comparator.comparingInt(c -> c.getNodes().size()));
+        System.out.println("num cc: " + cc.size());
+        System.out.println(largestCC.get().getNodes().size());
+        System.out.println(largestCC.get().getEdges().size());
+        var ndTree = new NestedDissectionTree<>(largestCC.get(), 0.6);
         var root = ndTree.getRoot();
-        var graph = ndTree.buildGraphFromDissectionNode(root);
-        System.out.println(graph.getNodes().size());
-        System.out.println(graph.getEdges().size());
+        var graphback = ndTree.buildGraphFromDissectionNode(root);
+        System.out.println(graphback.getNodes().size());
+        System.out.println(graphback.getEdges().size());
+
+//        var roadNetwork = new StandardGraph<>(nodes, edges);
+//        var ndTree = new NestedDissectionTree<>(roadNetwork, 0.6);
+//        for (var dissection : ndTree.getOrderedDissections()) {
+//            System.out.println(dissection.getDissectionNodes());
+//        }
+
+//        System.out.println(ndTree.getNumDirtyNodes());
+//        var newNode1 = new Node(18);
+//        var newNode2 = new Node(19);
+//        var newNode3 = new Node(20);
+//        ndTree.addEdge(new StandardEdge<>(node8, newNode1));
+//        for (var dissection : ndTree.getOrderedDissections()) {
+//            System.out.println(dissection.getDissectionNodes());
+//        }
+//        System.out.println(ndTree.getNumDirtyNodes());
+//        ndTree.addEdge(new StandardEdge<>(newNode1, newNode2));
+//        for (var dissection : ndTree.getOrderedDissections()) {
+//            System.out.println(dissection.getDissectionNodes());
+//        }
+//        System.out.println(ndTree.getNumDirtyNodes());
+//        ndTree.addEdge(new StandardEdge<>(newNode2, newNode3));
+//        for (var dissection : ndTree.getOrderedDissections()) {
+//            System.out.println(dissection.getDissectionNodes());
+//        }
+//        System.out.println(ndTree.getNumDirtyNodes());
+//        ndTree.addEdge(new StandardEdge<>(newNode3, node6));
+//        for (var dissection : ndTree.getOrderedDissections()) {
+//            System.out.println(dissection.getDissectionNodes());
+//        }
+//        System.out.println(ndTree.getNumDirtyNodes());
+//
+//        var root = ndTree.getRoot();
+//        var graph = ndTree.buildGraphFromDissectionNode(root);
+//        System.out.println(graph.getNodes().size());
+//        System.out.println(graph.getEdges().size());
     }
 }
