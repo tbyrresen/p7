@@ -1,7 +1,5 @@
 package dk.tbyrresen.engine;
 
-import java.util.Objects;
-
 // TODO make clear that this is really an undirected edge
 public class StandardEdge<T> implements Edge<T> {
     private final T source;
@@ -48,11 +46,12 @@ public class StandardEdge<T> implements Edge<T> {
             return false;
         }
         StandardEdge<?> that = (StandardEdge<?>) o;
-        return source.equals(that.source) && target.equals(that.target);
+        return (source.equals(that.source) && target.equals(that.target))
+            || (source.equals(that.target) && target.equals(that.source));
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(source, target);
+        return source.hashCode() + target.hashCode();
     }
 }
