@@ -11,7 +11,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class GraphSeparator<T> {
-    private static final int NUM_RANDOM_FLOWCUTTER_RUNS = 20;
+    private static final int NUM_RANDOM_FLOWCUTTER_RUNS = 10;
     private final Graph<T> graph;
     private final Separator<T> separator;
 
@@ -24,12 +24,14 @@ public class GraphSeparator<T> {
 
     private Set<EdgeCut<T>> computeCutSets(double epsilon) {
         Set<EdgeCut<T>> edgeCuts = new HashSet<>();
-        var runsCompleted = 0;
-        while (runsCompleted++ < NUM_RANDOM_FLOWCUTTER_RUNS) {
-            var randomSourceAndTarget = getRandomSourceAndTarget(graph);
-            var flowCutter = new FlowCutter<>(graph, randomSourceAndTarget.left, randomSourceAndTarget.right, epsilon);
-            edgeCuts.addAll(flowCutter.getCuts());
+        Set<ImmutablePair<T, T>> randomPairs = new HashSet<>();
+        for (int i = 0; i < NUM_RANDOM_FLOWCUTTER_RUNS; i++) {
+            randomPairs.add(getRandomSourceAndTarget(graph));
         }
+        randomPairs.parallelStream().forEach(p -> {
+            var flowCutter = new FlowCutter<>(graph, p.left, p.right, epsilon);
+            edgeCuts.addAll(flowCutter.getCuts());
+        });
         return edgeCuts;
     }
 
