@@ -25,7 +25,6 @@ public class GraphUtils {
                 var connectedComponent = fillConnectedComponent(node, graph);
                 connectedComponents.add(extractSubGraph(graph, connectedComponent));
                 visited.addAll(connectedComponent);
-                return connectedComponents; // TODO TESTING
             }
         }
         return connectedComponents;
