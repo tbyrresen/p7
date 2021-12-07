@@ -3,13 +3,13 @@ package dk.tbyrresen.engine;
 import java.util.Objects;
 
 public class Node {
-    private final int id;   // Used for testing
+    private final long id;   // Used for testing
 
-    public Node(int id) {
+    public Node(long id) {
         this.id = id;
     }
 
-    public int getId() {
+    public long getId() {
         return id;
     }
 
