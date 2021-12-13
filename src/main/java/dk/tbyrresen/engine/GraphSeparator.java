@@ -35,6 +35,20 @@ public class GraphSeparator<T> {
         return edgeCuts;
     }
 
+//    // non parallel for testing
+//    private Set<EdgeCut<T>> computeCutSets(double epsilon) {
+//        Set<EdgeCut<T>> edgeCuts = new HashSet<>();
+//        Set<ImmutablePair<T, T>> randomPairs = new HashSet<>();
+//        for (int i = 0; i < NUM_RANDOM_FLOWCUTTER_RUNS; i++) {
+//            randomPairs.add(getRandomSourceAndTarget(graph));
+//        }
+//        for (var pair : randomPairs) {
+//            var flowCutter = new FlowCutter<>(graph, pair.left, pair.right, epsilon);
+//            edgeCuts.addAll(flowCutter.getCuts());
+//        }
+//        return edgeCuts;
+//    }
+
     private ImmutablePair<T, T> getRandomSourceAndTarget(Graph<T> graph) {
         var random = new SecureRandom();
         var graphNodes = graph.getNodes();
