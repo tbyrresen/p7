@@ -2,6 +2,7 @@ package dk.tbyrresen.engine;
 
 import org.springframework.lang.Nullable;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -21,6 +22,9 @@ public class EdmondsKarp<T> {
 
     public EdmondsKarp(UnitFlowNetwork<T> unitFlowNetwork) {
         this.unitFlowNetwork = unitFlowNetwork;
+    }
+
+    public void updateFlow() {
         while (hasAugmentingPath()) {
             var currentNode = augmentingPathTarget;
             while (!unitFlowNetwork.isSourceNode(currentNode)) {
@@ -58,8 +62,39 @@ public class EdmondsKarp<T> {
 
     // must be computed AFTER we have concluded the forward search i.e. have exhausted all augmenting paths
     private void updateTargetReachable() {
+        targetReachableNodes.clear();
         targetReachableNodes.addAll(unitFlowNetwork.getTargetNodes());
         Queue<T> queue = new LinkedList<>(targetReachableNodes);
+        while (!queue.isEmpty()) {
+            var currentNode = queue.remove();
+            for (var multiFlowEdge : unitFlowNetwork.getOutEdges(currentNode)) {
+                var oppositeNode = multiFlowEdge.getOppositeOf(currentNode);
+                if (multiFlowEdge.canFlowTo(currentNode) && !targetReachableNodes.contains(oppositeNode)) {
+                    targetReachableNodes.add(oppositeNode);
+                    queue.add(oppositeNode);
+                }
+            }
+        }
+    }
+
+    public void updateSourceReachableFrom(T node) {
+        sourceReachableNodes.add(node);
+        Queue<T> queue = new LinkedList<>(Collections.singletonList(node));
+        while (!queue.isEmpty()) {
+            var currentNode = queue.remove();
+            for (var multiFlowEdge : unitFlowNetwork.getOutEdges(currentNode)) {
+                var oppositeNode = multiFlowEdge.getOppositeOf(currentNode);
+                if (multiFlowEdge.canFlowTo(oppositeNode) && !sourceReachableNodes.contains(oppositeNode)) {
+                    sourceReachableNodes.add(oppositeNode);
+                    queue.add(oppositeNode);
+                }
+            }
+        }
+    }
+
+    public void updateTargetReachableFrom(T node) {
+        targetReachableNodes.add(node);
+        Queue<T> queue = new LinkedList<>(Collections.singletonList(node));
         while (!queue.isEmpty()) {
             var currentNode = queue.remove();
             for (var multiFlowEdge : unitFlowNetwork.getOutEdges(currentNode)) {

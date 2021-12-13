@@ -1,6 +1,7 @@
 package dk.tbyrresen.engine;
 
 import org.apache.commons.collections4.SetUtils;
+import org.springframework.lang.Nullable;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -22,6 +23,9 @@ public class FlowCutter<T> {
     private final Map<T, Integer> hopDistancesToSource;
     private final Map<T, Integer> hopDistancesToTarget;
     private final Set<EdgeCut<T>> cuts = new HashSet<>();
+    @Nullable private T piercingNode;
+    @Nullable private CutSide piercingNodeCutSide;
+    private boolean isPiercingNodeAugmenting;
 
     public FlowCutter(Graph<T> graph, T source, T target, double epsilon) {
         if (epsilon < 0.0 || epsilon > 1.0) {
@@ -55,25 +59,44 @@ public class FlowCutter<T> {
 
     private void computeCutSets() {
         var foundEpsilonBalancedBipartition = false;
+        var edmondsKarp = new EdmondsKarp<>(unitFlowNetwork);
+        edmondsKarp.updateFlow();
         while (!foundEpsilonBalancedBipartition && !isIntersectingSourceAndTarget()) {
-            var edmondsKarp = new EdmondsKarp<>(unitFlowNetwork);
+            handleFlowUpdates(edmondsKarp);
             if (edmondsKarp.getSourceReachableNodes().size() <= edmondsKarp.getTargetReachableNodes().size()) {
-                unitFlowNetwork.setSourceNodes(edmondsKarp.getSourceReachableNodes());
+                unitFlowNetwork.setSourceNodes(new HashSet<>(edmondsKarp.getSourceReachableNodes()));
                 var sourceSideCut = findCutFor(edmondsKarp.getSourceReachableNodes());
                 cuts.add(sourceSideCut);
                 foundEpsilonBalancedBipartition = isEpsilonBalancedBipartition(edmondsKarp.getSourceReachableNodes());
-                var piercingNode = findPiercingNode(sourceSideCut, edmondsKarp.getTargetReachableNodes(), CutSide.SOURCE);
+                piercingNode = findPiercingNode(sourceSideCut, edmondsKarp.getTargetReachableNodes(), CutSide.SOURCE);
                 unitFlowNetwork.addToSource(piercingNode);
             } else {
-                unitFlowNetwork.setTargetNodes(edmondsKarp.getTargetReachableNodes());
+                unitFlowNetwork.setTargetNodes(new HashSet<>(edmondsKarp.getTargetReachableNodes()));
                 var targetSideCut = findCutFor(edmondsKarp.getTargetReachableNodes());
                 cuts.add(targetSideCut);
                 foundEpsilonBalancedBipartition = isEpsilonBalancedBipartition(edmondsKarp.getTargetReachableNodes());
-                var piercingNode = findPiercingNode(targetSideCut, edmondsKarp.getSourceReachableNodes(), CutSide.TARGET);
+                piercingNode = findPiercingNode(targetSideCut, edmondsKarp.getSourceReachableNodes(), CutSide.TARGET);
                 unitFlowNetwork.addToTarget(piercingNode);
             }
         }
         cuts.removeIf(this::isDominatedCut); // Remove dominated cuts to ensure pareto optimal cuts
+    }
+
+    // Updates flow only if the currently found piercing node creates an augmenting path.
+    // Otherwise we only update either the source reachable or the target reachable set depending on the
+    // piercing nodes location
+    private void handleFlowUpdates(EdmondsKarp<T> edmondsKarp) {
+        if (piercingNode != null) {
+            if (isPiercingNodeAugmenting) {
+                edmondsKarp.updateFlow();
+            } else {
+                if (piercingNodeCutSide == CutSide.SOURCE) {
+                    edmondsKarp.updateSourceReachableFrom(piercingNode);
+                } else {
+                    edmondsKarp.updateTargetReachableFrom(piercingNode);
+                }
+            }
+        }
     }
 
     private boolean isEpsilonBalancedBipartition(Set<T> sourceOrTargetSet) {
@@ -104,6 +127,7 @@ public class FlowCutter<T> {
     }
 
     private T findPiercingNode(EdgeCut<T> cut, Set<T> oppositeSideReachableNodes, CutSide cutSide) {
+        piercingNodeCutSide = cutSide;
         return findCandidatePiercingNodes(cut, oppositeSideReachableNodes)
                 .stream()
                 .max((n1, n2) -> distanceHeuristic(n1, n2, cutSide))
@@ -123,8 +147,10 @@ public class FlowCutter<T> {
                 .collect(Collectors.toSet());
 
         if (!nonAugmentingCandidates.isEmpty()) {
+            isPiercingNodeAugmenting = false;
             return nonAugmentingCandidates;
         }
+        isPiercingNodeAugmenting = true;
         return allCandidates;
     }
 
