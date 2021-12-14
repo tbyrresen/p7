@@ -1,5 +1,8 @@
 package dk.tbyrresen.engine;
 
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
+
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -11,13 +14,16 @@ public class StandardGraph<T> implements Graph<T> {
     protected Set<T> nodes;
     protected Set<Edge<T>> edges;
     protected Map<T, Set<T>> adjacentNodes;
+    protected Map<T, Set<Edge<T>>> adjacentEdges;
     protected boolean allowsSelfLoops;
     protected boolean allowsParallelEdges;
 
     public StandardGraph(Set<T> nodes, Set<Edge<T>> edges) {
         this.nodes = nodes;
         this.edges = edges;
-        adjacentNodes = findAdjacentNodes(nodes, edges);
+        var adjacents = findAdjacents(nodes, edges);
+        adjacentNodes = adjacents.getLeft();
+        adjacentEdges = adjacents.getRight();
         allowsSelfLoops = false;
         allowsParallelEdges = false;
     }
@@ -26,7 +32,9 @@ public class StandardGraph<T> implements Graph<T> {
     public StandardGraph(Graph<T> graph) {
         nodes = new HashSet<>(graph.getNodes());
         edges = new HashSet<>(graph.getEdges());
-        adjacentNodes = findAdjacentNodes(nodes, edges);
+        var adjacents = findAdjacents(nodes, edges);
+        adjacentNodes = adjacents.getLeft();
+        adjacentEdges = adjacents.getRight();
         allowsSelfLoops = false;
         allowsParallelEdges = false;
     }
@@ -36,16 +44,22 @@ public class StandardGraph<T> implements Graph<T> {
     public StandardGraph() {
     }
 
-    protected Map<T, Set<T>> findAdjacentNodes(Set<T> nodes, Set<Edge<T>> edges) {
+    protected Pair<Map<T, Set<T>>, Map<T, Set<Edge<T>>>> findAdjacents(Set<T> nodes, Set<Edge<T>> edges) {
         Map<T, Set<T>> adjacentNodesMap = new HashMap<>();
-        nodes.forEach(n -> adjacentNodesMap.put(n, new HashSet<>()));
+        Map<T, Set<Edge<T>>> adjacentEdgesMap = new HashMap<>();
+        nodes.forEach(n -> {
+            adjacentNodesMap.put(n, new HashSet<>());
+            adjacentEdgesMap.put(n, new HashSet<>());
+        });
         for (var edge : edges) {
             requireContainsNode(edge.getSource());
             requireContainsNode(edge.getTarget());
             adjacentNodesMap.get(edge.getSource()).add(edge.getTarget());
             adjacentNodesMap.get(edge.getTarget()).add(edge.getSource());
+            adjacentEdgesMap.get(edge.getSource()).add(edge);
+            adjacentEdgesMap.get(edge.getTarget()).add(edge);
         }
-        return adjacentNodesMap;
+        return ImmutablePair.of(adjacentNodesMap, adjacentEdgesMap);
     }
 
     @Override
@@ -59,6 +73,14 @@ public class StandardGraph<T> implements Graph<T> {
             throw new IllegalArgumentException(String.format("Graph does not contain node %s", node));
         }
         return adjacentNodes.get(node);
+    }
+
+    @Override
+    public Set<Edge<T>> getAdjacentEdges(T node) {
+        if (!nodes.contains(node)) {
+            throw new IllegalArgumentException(String.format("Graph does not contain node %s", node));
+        }
+        return adjacentEdges.get(node);
     }
 
     @Override

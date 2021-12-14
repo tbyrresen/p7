@@ -126,8 +126,10 @@ public class GraphUtils {
             throw new IllegalArgumentException(String.format(
                     "Cannot extract subgraph for nodes %s which are not all contained in graph %s", subGraphNodes, graph));
         }
-        return graph.getEdges()
+        return subGraphNodes
                 .stream()
+                .map(graph::getAdjacentEdges)
+                .flatMap(Set::stream)
                 .filter(e -> isEdgeInSubGraph(e, subGraphNodes))
                 .collect(Collectors.toSet());
     }

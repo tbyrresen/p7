@@ -110,6 +110,11 @@ public class UnitFlowNetwork<T> implements Graph<T> {
     }
 
     @Override
+    public Set<Edge<T>> getAdjacentEdges(T node) {
+        throw new UnsupportedOperationException(); // TODO this is dumb but we dont need it here
+    }
+
+    @Override
     public void addEdge(Edge<T> edge) {
         throw new UnsupportedOperationException(); // TODO this is dumb. Should probably make flow network inherent an immutable graph type
     }
