@@ -60,7 +60,7 @@ public class FlowCutter<T> {
     private void computeCutSets() {
         var foundEpsilonBalancedBipartition = false;
         var edmondsKarp = new EdmondsKarp<>(unitFlowNetwork);
-        edmondsKarp.updateFlow();
+        edmondsKarp.updateFlowFrom(unitFlowNetwork.getOriginalSource());
         while (!foundEpsilonBalancedBipartition && !isIntersectingSourceAndTarget()) {
             handleFlowUpdates(edmondsKarp);
             if (edmondsKarp.getSourceReachableNodes().size() <= edmondsKarp.getTargetReachableNodes().size()) {
@@ -88,7 +88,11 @@ public class FlowCutter<T> {
     private void handleFlowUpdates(EdmondsKarp<T> edmondsKarp) {
         if (piercingNode != null) {
             if (isPiercingNodeAugmenting) {
-                edmondsKarp.updateFlow();
+                if (piercingNodeCutSide == CutSide.SOURCE) {
+                    edmondsKarp.updateFlowFrom(piercingNode);
+                } else {
+                    edmondsKarp.updateFlowTo(piercingNode);
+                }
             } else {
                 if (piercingNodeCutSide == CutSide.SOURCE) {
                     edmondsKarp.updateSourceReachableFrom(piercingNode);
