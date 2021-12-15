@@ -5,6 +5,7 @@ import org.apache.commons.collections4.SetUtils;
 import org.springframework.lang.Nullable;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Queue;
@@ -136,5 +137,59 @@ public class GraphUtils {
 
     private static<T> boolean isEdgeInSubGraph(Edge<T> edge, Set<T> nodesOfSubGraph) {
         return nodesOfSubGraph.contains(edge.getSource()) && nodesOfSubGraph.contains(edge.getTarget());
+    }
+
+    // Recursive implementation to find biconnected component(s) of a graph by first finding all articulation points
+    // on which we can split the graph (not implemented yet).
+    // Implementation is based on https://algs4.cs.princeton.edu/41graph/Biconnected.java.html
+    // NOTE that this implementation does not work on larger graphs due to stack overflows but translating
+    // this recursive variant into an iterative version is nontrivial.
+    public static<T> void biconnectedComponent(Graph<T> graph) {
+        HashMap<T, Integer> low = new HashMap<>();
+        HashMap<T, Integer> pre = new HashMap<>();
+        HashMap<T, Boolean> articulation = new HashMap<>();
+        Integer counter = 0;
+        for (var node : graph.getNodes()) {
+            low.put(node, -1);
+            pre.put(node, -1);
+            articulation.put(node, false);
+        }
+        for (var node : graph.getNodes()) {
+            if (pre.get(node) == -1) {
+                findArticulationPoints(graph, low, pre, articulation, node, node, counter);
+            }
+        }
+
+        // TODO return the biconnected component(s) found by splitting across articulation points
+    }
+
+    private static<T> void findArticulationPoints(Graph<T> graph,
+                                                  HashMap<T, Integer> low,
+                                                  HashMap<T, Integer> pre,
+                                                  HashMap<T, Boolean> articulation,
+                                                  T u,
+                                                  T v,
+                                                  Integer counter) {
+        int children = 0;
+        pre.put(v, counter++);
+        low.put(v, pre.get(v));
+        for (var w : graph.getAdjacentNodes(v)) {
+            if (pre.get(w) == -1) {
+                children++;
+                findArticulationPoints(graph, low, pre, articulation, v, w, counter);
+
+                low.put(v, Math.min(low.get(v), low.get(w)));
+
+                if (low.get(w) >= pre.get(v) && !u.equals(v)) {
+                    articulation.put(v, true);
+                }
+            } else if (!w.equals(u)) {
+                low.put(v, Math.min(low.get(v), pre.get(w)));
+            }
+        }
+
+        if (u.equals(v) && children > 1) {
+            articulation.put(v, true);
+        }
     }
 }
