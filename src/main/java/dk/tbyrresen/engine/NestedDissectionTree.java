@@ -3,6 +3,7 @@ package dk.tbyrresen.engine;
 import org.springframework.lang.Nullable;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -12,9 +13,12 @@ public class NestedDissectionTree<T> {
     private NestedDissectionTreeNode<T> root;
     private List<NestedDissectionTreeNode<T>> orderedDissections; // TODO consider using a TreeSet for fast removal
     private final double epsilon;
+    private final List<NestedDissectionTreeRecomputation> recomputations = new ArrayList<>(); // used for evaluation
+    private final int numFlowCutterRuns;
 
-    public NestedDissectionTree(Graph<T> graph, double epsilon) {
+    public NestedDissectionTree(Graph<T> graph, double epsilon, int numFlowCutterRuns) {
         this.epsilon = epsilon;
+        this.numFlowCutterRuns = numFlowCutterRuns;
         root = buildNestedDissectionTreeRoot(graph);
         orderedDissections = getOrderedDissectionNodes();
     }
@@ -24,7 +28,7 @@ public class NestedDissectionTree<T> {
         if (GraphUtils.isClique(graph) || GraphUtils.isTree(graph)) {
             treeRoot = new NestedDissectionTreeNode<>(graph.getNodes(), graph.getEdges(), 0);
         } else {
-            var graphSeparator = new GraphSeparator<>(graph, epsilon);
+            var graphSeparator = new GraphSeparator<>(graph, epsilon, numFlowCutterRuns);
             var separator = graphSeparator.getSeparator();
             var separatorNodes = separator.getSeparatorNodes();
             var separatorEdges = GraphUtils.extractSubGraphEdges(graph, separatorNodes);
@@ -61,7 +65,7 @@ public class NestedDissectionTree<T> {
             );
             parent.addChild(dissectionNode);
         } else {
-            var graphSeparator = new GraphSeparator<>(graph, epsilon);
+            var graphSeparator = new GraphSeparator<>(graph, epsilon, numFlowCutterRuns);
             var separator = graphSeparator.getSeparator();
             var separatorNodes = separator.getSeparatorNodes();
             var separatorEdges = GraphUtils.extractSubGraphEdges(graph, separatorNodes);
@@ -102,7 +106,8 @@ public class NestedDissectionTree<T> {
         dissectionNodes.add(node);
     }
 
-    public void addEdge(Edge<T> edge) {
+    // Returns the node at which some recomputation occured. If no recomputation occured returns empty.
+    public Optional<NestedDissectionTreeNode<T>> addEdge(Edge<T> edge) {
         var sourceDissectionNode = findDissectionNodeByGraphNode(edge.getSource());
         var targetDissectionNode = findDissectionNodeByGraphNode(edge.getTarget());
         if (sourceDissectionNode.isEmpty() && targetDissectionNode.isEmpty()) {
@@ -114,8 +119,10 @@ public class NestedDissectionTree<T> {
             var highestImbalancedNode = findHighestImbalancedAncestor(source);
             if (highestImbalancedNode.isPresent()) {
                 recomputeTreeFromDissectionNode(highestImbalancedNode.get());
+                return Optional.of(highestImbalancedNode.get());
             } else if (isLeafNode(source) && violatesLeafConditions(source)) {
                 recomputeTreeFromDissectionNode(source);
+                return Optional.of(source);
             }
         } else if (sourceDissectionNode.isEmpty()) {
             var target = getUpdateDissectionNode(targetDissectionNode.get(), edge.getSource(), edge);
@@ -123,8 +130,10 @@ public class NestedDissectionTree<T> {
             var highestImbalancedNode = findHighestImbalancedAncestor(target);
             if (highestImbalancedNode.isPresent()) {
                 recomputeTreeFromDissectionNode(highestImbalancedNode.get());
+                return Optional.of(highestImbalancedNode.get());
             } else if (isLeafNode(target) && violatesLeafConditions(target)) {
                 recomputeTreeFromDissectionNode(target);
+                return Optional.of(target);
             }
         } else { // need to find the lowest common ancestor when both are present
             var source = sourceDissectionNode.get();
@@ -134,10 +143,12 @@ public class NestedDissectionTree<T> {
                 source.addDissectionEdge(edge);
                 if (isLeafNode(source) && violatesLeafConditions(source)) {
                     recomputeTreeFromDissectionNode(source);
+                    return Optional.of(source);
                 }
             } else { // determine if the edge crosses a separator or if we simply need to add an edge to child
                 if (crossesSeparator(sourceDissectionNode.get(), targetDissectionNode.get())) {
                     recomputeTreeFromDissectionNode(lowestCommonAncestor, edge);
+                    return Optional.of(lowestCommonAncestor);
                 } else { // one of the two must be the parent of the other which never requires recomputation
                     if (source.getParent() != null && source.getParent().equals(target)) {
                         target.addEdgeToChildren(edge);
@@ -147,9 +158,10 @@ public class NestedDissectionTree<T> {
                 }
             }
         }
+        return Optional.empty();
     }
 
-    private Optional<NestedDissectionTreeNode<T>> findDissectionNodeByGraphNode(T graphNode) {
+    public Optional<NestedDissectionTreeNode<T>> findDissectionNodeByGraphNode(T graphNode) {
         for (var dissectionNode : orderedDissections) {
             if (dissectionNode.getDissectionNodes().contains(graphNode)) {
                 return Optional.of(dissectionNode);
@@ -252,6 +264,7 @@ public class NestedDissectionTree<T> {
     }
 
     private void recomputeTreeFromDissectionNode(NestedDissectionTreeNode<T> node) {
+        long start = System.currentTimeMillis();
         var graph = buildGraphFromDissectionNode(node);
         if (root.equals(node)) {
             root = buildNestedDissectionTreeRoot(graph);
@@ -264,6 +277,8 @@ public class NestedDissectionTree<T> {
             parentNode.removeChild(node);
             buildNestedDissectionTree(parentNode, graph, node.getSeparationSide(), node.getDepth());
         }
+        long end = System.currentTimeMillis();
+        recomputations.add(new NestedDissectionTreeRecomputation(node.getDepth(), end - start));
         orderedDissections = getOrderedDissectionNodes();
     }
 
@@ -272,6 +287,7 @@ public class NestedDissectionTree<T> {
     // edge crosses a separator we have no nested dissection node to which we can add the edge
     // and we can't add it as a children edge either, so we pass it this way.
     private void recomputeTreeFromDissectionNode(NestedDissectionTreeNode<T> node, Edge<T> edge) {
+        long start = System.currentTimeMillis();
         var graph = buildGraphFromDissectionNode(node);
         graph.addEdge(edge);
         if (root.equals(node)) {
@@ -285,6 +301,8 @@ public class NestedDissectionTree<T> {
             parentNode.removeChild(node);
             buildNestedDissectionTree(parentNode, graph, node.getSeparationSide(), node.getDepth());
         }
+        long end = System.currentTimeMillis();
+        recomputations.add(new NestedDissectionTreeRecomputation(node.getDepth(), end - start));
         orderedDissections = getOrderedDissectionNodes();
     }
 
@@ -330,5 +348,21 @@ public class NestedDissectionTree<T> {
                 .stream()
                 .mapToInt(NestedDissectionTreeNode::getNumDirtyNodes)
                 .sum();
+    }
+
+    public int getNumNestedDissectionNodes () {
+        return orderedDissections.size();
+    }
+
+    public int getHeight() {
+        return orderedDissections
+                .stream()
+                .max(Comparator.comparingInt(NestedDissectionTreeNode::getDepth))
+                .get() // Stupid but only for testing
+                .getDepth();
+    }
+
+    public List<NestedDissectionTreeRecomputation> getRecomputations() {
+        return recomputations;
     }
 }

@@ -25,8 +25,8 @@ public class OSMGraph extends StandardGraph<Node> {
         var nodesAndEdges = buildNodesAndEdgesFromOsmWays();
         nodes = nodesAndEdges.getLeft();
         edges = nodesAndEdges.getRight();
-        System.out.println("osm nodes: " + nodes.size());
-        System.out.println("osm edges: " + edges.size());
+        System.out.println("Parsed OSM nodes: " + nodes.size());
+        System.out.println("Parsed OSM edges: " + edges.size());
         var adjacents = findAdjacents(nodes, edges);
         adjacentNodes = adjacents.getLeft();
         adjacentEdges = adjacents.getRight();

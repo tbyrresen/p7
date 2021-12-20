@@ -9,11 +9,12 @@ import java.util.List;
 import java.util.Queue;
 import java.util.Set;
 
+// Used for testing only to compare ND-trees vs generic nested dissection
 public class NestedDissector {
     private NestedDissector() {
     }
 
-    public static<T> List<Set<T>> dissect(Graph<T> graph, double epsilon) {
+    public static<T> List<Set<T>> dissect(Graph<T> graph, double epsilon, int numFlowCutterRuns) {
         Deque<Set<T>> dissections = new ArrayDeque<>();
         Queue<Graph<T>> queue = new LinkedList<>(Collections.singletonList(graph));
         while (!queue.isEmpty()) {
@@ -21,7 +22,7 @@ public class NestedDissector {
             if (GraphUtils.isClique(currentGraph) || GraphUtils.isTree(currentGraph)) {
                 dissections.addFirst(currentGraph.getNodes());
             } else {
-                var graphSeparator = new GraphSeparator<>(currentGraph, epsilon);
+                var graphSeparator = new GraphSeparator<>(currentGraph, epsilon, numFlowCutterRuns);
                 var separator = graphSeparator.getSeparator();
                 dissections.addFirst(separator.getSeparatorNodes());
                 var subgraphs = graphSeparator.separate();
